@@ -51,8 +51,19 @@ module HTTPI
 
       def do_request(request)
         setup_client request
-        yield client
-        respond_with client
+        with_ntlm_auth do |client|
+          yield client
+          respond_with client
+        end
+      end
+
+      def with_ntlm_auth
+        r = yield client
+        # 8 => :ntlm
+        if (client.http_auth_types == 8) && r.error? && (r.code == 401) # 4 way handshake NTLM authentication
+          r = yield client
+        end
+        r
       end
 
       def setup_client(request)
